@@ -12,6 +12,8 @@ use crate::state::AppState;
 
 mod api;
 mod config;
+mod repository;
+mod services;
 mod state;
 
 #[actix_web::main]
@@ -43,6 +45,12 @@ async fn main() -> std::io::Result<()> {
 
     // Initalize empty state
     let app_state = web::Data::new(AppState::new().await);
+
+    // Run migrations
+    sqlx::migrate!("./migrations")
+        .run(&app_state.db)
+        .await
+        .expect("Failed to run migrations");
 
     tracing::info!("Starting HTTP server at http://localhost:{}", CONFIG.port);
     tracing::info!(

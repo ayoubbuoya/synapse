@@ -10,6 +10,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::config::CONFIG;
 use crate::state::AppState;
 
+mod api;
 mod config;
 mod state;
 
@@ -59,6 +60,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .into_utoipa_app()
             .app_data(app_state.clone())
+            .service(api::get_index_service)
+            .service(api::get_health_service)
             .split_for_parts();
 
         app.service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", app_api))

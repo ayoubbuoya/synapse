@@ -17,6 +17,17 @@ tokio = { version = "1.49.0", features = ["full"] }
 tracing = "0.1.44"
 tracing-appender = "0.2.4"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
-utoipa = { version = "5.4.0", features = ["actix_extras"] }
+utoipa = { version = "5.4.0", features = ["actix_extras", "uuid"] }
 utoipa-actix-web = "0.1.2"
 utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web", "reqwest"] }
+sqlx = { version = "0.8.6", features = [
+    "postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "uuid",
+    "chrono",
+    "json",
+] }
+chrono = { version = "0.4.43", features = ["serde"] }
+uuid = { version = "1.20.0", features = ["v4", "serde"] }
+thiserror = "2.0.18"

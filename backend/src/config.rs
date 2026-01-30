@@ -2,6 +2,7 @@ use once_cell::sync::Lazy;
 
 pub struct Config {
     pub port: u16,
+    pub database_url: String,
 }
 
 impl Config {
@@ -11,7 +12,9 @@ impl Config {
             .parse()
             .expect("PORT must be a valid u16 number");
 
-        Config { port }
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+
+        Config { port, database_url }
     }
 }
 

@@ -70,6 +70,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .service(api::get_index_service)
             .service(api::get_health_service)
+            .service(api::chat::create_chat_handler)
+            .service(api::chat::get_chats_handler)
+            .service(api::chat::get_chat_history_handler)
+            .service(api::chat::send_message_handler)
             .split_for_parts();
 
         app.service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", app_api))

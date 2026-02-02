@@ -26,6 +26,10 @@ pub struct MessageResponse {
     pub role: String,
     pub content: String,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tokens_used: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cost_usdc: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -139,13 +143,28 @@ pub async fn get_chat_history_handler(
     let chat_id = path.into_inner();
     match chat::get_chat_messages(&state.db, chat_id).await {
         Ok(messages) => {
+            // Fetch all payments for these messages
+            let message_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+            let payments = if !message_ids.is_empty() {
+                chat::get_payments_by_message_ids(&state.db, &message_ids)
+                    .await
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            };
+
             let response = messages
                 .into_iter()
-                .map(|m| MessageResponse {
-                    id: m.id,
-                    role: m.role,
-                    content: m.content,
-                    created_at: m.created_at.to_string(),
+                .map(|m| {
+                    let payment = payments.iter().find(|p| p.message_id == m.id);
+                    MessageResponse {
+                        id: m.id,
+                        role: m.role,
+                        content: m.content,
+                        created_at: m.created_at.to_string(),
+                        tokens_used: payment.map(|p| p.tokens_used),
+                        cost_usdc: payment.map(|p| p.amount_usdc.to_string()),
+                    }
                 })
                 .collect::<Vec<MessageResponse>>();
             HttpResponse::Ok().json(response)
@@ -230,10 +249,54 @@ pub async fn send_message_handler(
         }
     };
 
+    // Count tokens in the AI response (simple word-based estimation)
+    // For production, use a proper tokenizer like tiktoken
+    let tokens_used = estimate_tokens(&ai_response_content);
+
+    // Calculate cost: 100 tokens = 0.001 USDC
+    let cost_usdc = rust_decimal::Decimal::from(tokens_used) * rust_decimal::Decimal::new(1, 5); // 0.00001 per token
+
+    // Get chat to find wallet address
+    let chat_record = match chat::get_chat_by_id(&state.db, chat_id).await {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            tracing::error!("Chat not found: {}", chat_id);
+            return HttpResponse::NotFound().finish();
+        }
+        Err(e) => {
+            tracing::error!("Failed to get chat: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+
+    // Store payment record
+    if let Err(e) = chat::add_payment(
+        &state.db,
+        saved_response.id,
+        &chat_record.user_address,
+        tokens_used,
+        cost_usdc,
+    )
+    .await
+    {
+        tracing::error!("Failed to save payment record: {:?}", e);
+        // Don't fail the request, just log the error
+    }
+
     HttpResponse::Ok().json(MessageResponse {
         id: saved_response.id,
         role: saved_response.role,
         content: saved_response.content,
         created_at: saved_response.created_at.to_string(),
+        tokens_used: Some(tokens_used),
+        cost_usdc: Some(cost_usdc.to_string()),
     })
+}
+
+// Simple token estimation function
+// For production, use a proper tokenizer like tiktoken
+fn estimate_tokens(text: &str) -> i32 {
+    // Rough estimation: ~1.3 tokens per word on average for English
+    let words = text.split_whitespace().count();
+    ((words as f64) * 1.3).ceil() as i32
 }

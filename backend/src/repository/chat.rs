@@ -92,3 +92,61 @@ pub async fn get_chat_messages(pool: &PgPool, chat_id: Uuid) -> Result<Vec<Messa
     .await?;
     Ok(messages)
 }
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct Payment {
+    pub id: Uuid,
+    pub message_id: Uuid,
+    pub wallet_address: String,
+    pub tokens_used: i32,
+    pub amount_usdc: rust_decimal::Decimal,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn add_payment(
+    pool: &PgPool,
+    message_id: Uuid,
+    wallet_address: &str,
+    tokens_used: i32,
+    amount_usdc: rust_decimal::Decimal,
+) -> Result<Payment, sqlx::Error> {
+    let payment = sqlx::query_as!(
+        Payment,
+        "INSERT INTO payments (message_id, wallet_address, tokens_used, amount_usdc) VALUES ($1, $2, $3, $4) RETURNING *",
+        message_id,
+        wallet_address,
+        tokens_used,
+        amount_usdc,
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(payment)
+}
+
+pub async fn get_user_payments(
+    pool: &PgPool,
+    wallet_address: &str,
+) -> Result<Vec<Payment>, sqlx::Error> {
+    let payments = sqlx::query_as!(
+        Payment,
+        "SELECT * FROM payments WHERE wallet_address = $1 ORDER BY created_at DESC",
+        wallet_address,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(payments)
+}
+
+pub async fn get_payments_by_message_ids(
+    pool: &PgPool,
+    message_ids: &[Uuid],
+) -> Result<Vec<Payment>, sqlx::Error> {
+    let payments = sqlx::query_as!(
+        Payment,
+        "SELECT * FROM payments WHERE message_id = ANY($1)",
+        message_ids,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(payments)
+}

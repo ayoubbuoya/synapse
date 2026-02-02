@@ -27,7 +27,9 @@ sqlx = { version = "0.8.6", features = [
     "uuid",
     "chrono",
     "json",
+    "rust_decimal",
 ] }
 chrono = { version = "0.4.43", features = ["serde"] }
 uuid = { version = "1.20.0", features = ["v4", "serde"] }
 thiserror = "2.0.18"
+rust_decimal = "1.37.0"

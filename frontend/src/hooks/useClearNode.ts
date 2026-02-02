@@ -14,8 +14,10 @@ const CLEARNODE_URL = "wss://clearnet-sandbox.yellow.com/ws";
 type MessageType =
   | "auth.request"
   | "auth.challenge"
+  | "auth_challenge"
   | "auth.verify"
   | "auth.success"
+  | "auth_success"
   | "createAppSession"
   | "submitAppState"
   | "closeAppSession"
@@ -77,34 +79,66 @@ export const useClearNode = () => {
 
     websocket.onmessage = (event) => {
       try {
-        const message: ClearNodeMessage = JSON.parse(event.data);
-        console.log("📨 Received:", message);
+        const rawMessage = JSON.parse(event.data);
+        console.log("📨 Received raw:", rawMessage);
 
-        // Handle response to pending request
-        if (
-          message.requestId &&
-          pendingRequests.current.has(message.requestId)
-        ) {
-          const resolver = pendingRequests.current.get(message.requestId);
-          resolver?.(message);
-          pendingRequests.current.delete(message.requestId);
+        let message: ClearNodeMessage | null = null;
+
+        // Parse RPC format
+        if (rawMessage.res && Array.isArray(rawMessage.res)) {
+          const [requestId, method, params] = rawMessage.res;
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
+        } else if (rawMessage.req && Array.isArray(rawMessage.req)) {
+          const [requestId, method, params] = rawMessage.req;
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
+        }
+
+        if (!message) {
+          console.warn("Unknown message format:", rawMessage);
           return;
         }
 
+        console.log("📨 Parsed:", message);
+
         // Handle specific message types
         switch (message.type) {
+          case "auth_challenge": // RPC method name uses underscore
           case "auth.challenge":
             handleAuthChallenge(websocket, message);
             break;
-          case "auth.success":
+          case "auth_success":
             setIsAuthenticated(true);
             console.log("✅ Authenticated with ClearNode");
-            break;
-          case "error":
-            console.error("❌ ClearNode error:", message.error);
-            setError(message.error || "Unknown error");
+            // Resolve pending auth request
+            if (
+              message.requestId &&
+              pendingRequests.current.has(message.requestId)
+            ) {
+              const resolver = pendingRequests.current.get(message.requestId);
+              resolver?.(message);
+              pendingRequests.current.delete(message.requestId);
+            }
             break;
           default:
+            // Handle response to pending request
+            if (
+              message.requestId &&
+              pendingRequests.current.has(message.requestId)
+            ) {
+              const resolver = pendingRequests.current.get(message.requestId);
+              resolver?.(message);
+              pendingRequests.current.delete(message.requestId);
+              return;
+            }
+
             // Call registered handler if exists
             const handler = messageHandlers.current.get(message.type);
             if (handler) {
@@ -171,7 +205,8 @@ export const useClearNode = () => {
     }
 
     try {
-      const challenge = message.payload?.challenge;
+      const challenge =
+        message.payload?.challenge_message || message.payload?.challenge;
       if (!challenge) {
         console.error("No challenge in message");
         return;

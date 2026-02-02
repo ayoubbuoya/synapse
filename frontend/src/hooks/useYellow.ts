@@ -18,7 +18,7 @@ const CONTRACT_ADDRESSES = {
   adjudicator: "0x7c7ccbc98469190849BCC6c926307794fDfB11F2" as Address,
   guestAddress: "0x79dAa774769334aF120f6CAA57E828FBBF56b39a" as Address, // Service node
 };
-const CHALLENGE_DURATION = BigInt(100); // 100 blocks
+const CHALLENGE_DURATION = BigInt(86400); // 1 day in seconds
 
 interface ChannelSession {
   channelId: string;

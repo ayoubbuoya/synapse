@@ -4,14 +4,47 @@ import { Sidebar } from './Sidebar';
 import { ChatInterface } from './ChatInterface';
 import { Sparkles, Menu } from 'lucide-react';
 import { useChats } from '../hooks/useChat';
+import { useYellow } from '../hooks/useYellow';
 
 interface DashboardProps {
     address: string;
 }
 
 export function Dashboard({ address }: DashboardProps) {
+    const { isYellowReady, initYellow, balance, approveTokens, depositFunds, isLoading, error } = useYellow();
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [depositAmount, setDepositAmount] = useState<string>("10");
+    const [showDepositModal, setShowDepositModal] = useState(false);
+
+
+    // Step 1: Initialize Yellow Layer (After Wallet Connect)
+    const handleInitLayer = async () => {
+        await initYellow();
+    };
+
+    // Handle deposit flow
+    const handleDeposit = async () => {
+        try {
+            const amount = parseFloat(depositAmount);
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid amount");
+                return;
+            }
+
+            // First approve tokens
+            await approveTokens(amount);
+
+            // Then deposit
+            await depositFunds(amount);
+
+            setShowDepositModal(false);
+            alert(`Successfully deposited ${amount} USDC!`);
+        } catch (error: any) {
+            alert(`Deposit failed: ${error?.message || "Unknown error"}`);
+        }
+    };
+
 
     // Auto-select first chat if none selected (optional, but good UX)
     const { data: chats } = useChats(address);
@@ -60,8 +93,73 @@ export function Dashboard({ address }: DashboardProps) {
                             Synapse
                         </span>
                     </div>
-                    <ConnectButton accountStatus="avatar" chainStatus="icon" />
+                    <div className="flex items-center gap-3">
+                        {!isYellowReady ? (
+                            <button
+                                onClick={handleInitLayer}
+                                disabled={isLoading}
+                                className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                                {isLoading ? "Initializing..." : "Initialize Yellow"}
+                            </button>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface rounded-lg border border-dark-border">
+                                    <span className="text-sm text-dark-muted">Balance:</span>
+                                    <span className="text-sm font-semibold text-brand-400">{balance} USDC</span>
+                                </div>
+                                <button
+                                    onClick={() => setShowDepositModal(true)}
+                                    className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    Deposit
+                                </button>
+                            </>
+                        )}
+                        <ConnectButton accountStatus="avatar" chainStatus="icon" />
+                    </div>
                 </header>
+
+                {/* Deposit Modal */}
+                {showDepositModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDepositModal(false)}>
+                        <div className="bg-dark-surface border border-dark-border rounded-xl p-6 w-96 max-w-[90vw]" onClick={e => e.stopPropagation()}>
+                            <h2 className="text-xl font-bold mb-4">Deposit USDC</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-dark-muted mb-2">Amount (USDC)</label>
+                                    <input
+                                        type="number"
+                                        value={depositAmount}
+                                        onChange={(e) => setDepositAmount(e.target.value)}
+                                        className="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-brand-400"
+                                        placeholder="10"
+                                        step="0.01"
+                                        min="0"
+                                    />
+                                </div>
+                                {error && (
+                                    <div className="text-red-400 text-sm">{error}</div>
+                                )}
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowDepositModal(false)}
+                                        className="flex-1 px-4 py-2 bg-dark-bg hover:bg-dark-border text-dark-text rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDeposit}
+                                        disabled={isLoading}
+                                        className="flex-1 px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                                    >
+                                        {isLoading ? "Processing..." : "Deposit"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <main className="flex-1 overflow-hidden relative">
                     {selectedChatId ? (

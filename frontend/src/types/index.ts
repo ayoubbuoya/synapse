@@ -9,6 +9,8 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  tokens_used?: number;
+  cost_usdc?: string;
 }
 
 export interface CreateChatRequest {

@@ -39,8 +39,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                         {message.content}
                     </Markdown>
                 </div>
-                <div className={cn("text-[10px] mt-2 opacity-50", isUser ? "text-brand-100" : "text-dark-muted")}>
-                    {new Date(message.created_at).toLocaleTimeString()}
+                <div className={cn("text-[10px] mt-2 opacity-50 flex items-center justify-between", isUser ? "text-brand-100" : "text-dark-muted")}>
+                    <span>{new Date(message.created_at).toLocaleTimeString()}</span>
+                    {!isUser && message.tokens_used && message.cost_usdc && (
+                        <span className="text-brand-400 font-medium">
+                            {message.tokens_used} tokens · {parseFloat(message.cost_usdc).toFixed(6)} USDC
+                        </span>
+                    )}
                 </div>
             </div>
         </div>

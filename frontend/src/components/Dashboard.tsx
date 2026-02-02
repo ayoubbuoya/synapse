@@ -11,11 +11,23 @@ interface DashboardProps {
 }
 
 export function Dashboard({ address }: DashboardProps) {
-    const { isYellowReady, initYellow, balance, approveTokens, depositFunds, isLoading, error } = useYellow();
+    const {
+        isYellowReady,
+        initYellow,
+        balance,
+        approveTokens,
+        depositFunds,
+        createChannelWithSession,
+        closeChannelAndSession,
+        activeChannel,
+        isClearNodeReady,
+        isLoading,
+        error
+    } = useYellow();
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [depositAmount, setDepositAmount] = useState<string>("10");
-    const [showDepositModal, setShowDepositModal] = useState(false);
+    const [sessionAmount, setSessionAmount] = useState<string>("10");
+    const [showSessionModal, setShowSessionModal] = useState(false);
 
 
     // Step 1: Initialize Yellow Layer (After Wallet Connect)
@@ -23,10 +35,10 @@ export function Dashboard({ address }: DashboardProps) {
         await initYellow();
     };
 
-    // Handle deposit flow
-    const handleDeposit = async () => {
+    // Start a new session (create channel)
+    const handleStartSession = async () => {
         try {
-            const amount = parseFloat(depositAmount);
+            const amount = parseFloat(sessionAmount);
             if (isNaN(amount) || amount <= 0) {
                 alert("Please enter a valid amount");
                 return;
@@ -38,10 +50,27 @@ export function Dashboard({ address }: DashboardProps) {
             // Then deposit
             await depositFunds(amount);
 
-            setShowDepositModal(false);
-            alert(`Successfully deposited ${amount} USDC!`);
+            // Create channel and session
+            await createChannelWithSession(amount);
+
+            setShowSessionModal(false);
+            alert(`Session started with ${amount} USDC!`);
         } catch (error: any) {
-            alert(`Deposit failed: ${error?.message || "Unknown error"}`);
+            alert(`Failed to start session: ${error?.message || "Unknown error"}`);
+        }
+    };
+
+    // End the current session (close channel)
+    const handleEndSession = async () => {
+        if (!confirm("Are you sure you want to end this session? The channel will be closed and settled on-chain.")) {
+            return;
+        }
+
+        try {
+            await closeChannelAndSession();
+            alert("Session ended successfully!");
+        } catch (error: any) {
+            alert(`Failed to end session: ${error?.message || "Unknown error"}`);
         }
     };
 
@@ -104,56 +133,89 @@ export function Dashboard({ address }: DashboardProps) {
                             </button>
                         ) : (
                             <>
+                                {/* ClearNode Status */}
+                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs ${isClearNodeReady ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${isClearNodeReady ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`}></div>
+                                    <span>{isClearNodeReady ? 'ClearNode' : 'Connecting...'}</span>
+                                </div>
+
+                                {/* Balance Display */}
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface rounded-lg border border-dark-border">
                                     <span className="text-sm text-dark-muted">Balance:</span>
                                     <span className="text-sm font-semibold text-brand-400">{balance} USDC</span>
                                 </div>
-                                <button
-                                    onClick={() => setShowDepositModal(true)}
-                                    className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium transition-colors"
-                                >
-                                    Deposit
-                                </button>
+
+                                {/* Session Status & Controls */}
+                                {activeChannel ? (
+                                    <>
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 border border-purple-500/30 rounded-lg">
+                                            <span className="text-sm text-purple-300">Session:</span>
+                                            <span className="text-sm font-semibold text-purple-400">{activeChannel.currentBalance} USDC</span>
+                                            <span className="text-xs text-purple-400/60">v{activeChannel.stateVersion}</span>
+                                        </div>
+                                        <button
+                                            onClick={handleEndSession}
+                                            disabled={isLoading}
+                                            className="px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            End Session
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowSessionModal(true)}
+                                        disabled={isLoading || !isClearNodeReady}
+                                        className="px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                    >
+                                        Start Session
+                                    </button>
+                                )}
                             </>
                         )}
                         <ConnectButton accountStatus="avatar" chainStatus="icon" />
                     </div>
                 </header>
 
-                {/* Deposit Modal */}
-                {showDepositModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDepositModal(false)}>
+                {/* Session Modal */}
+                {showSessionModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowSessionModal(false)}>
                         <div className="bg-dark-surface border border-dark-border rounded-xl p-6 w-96 max-w-[90vw]" onClick={e => e.stopPropagation()}>
-                            <h2 className="text-xl font-bold mb-4">Deposit USDC</h2>
+                            <h2 className="text-xl font-bold mb-2">Start Chat Session</h2>
+                            <p className="text-sm text-dark-muted mb-4">
+                                Create a state channel for instant, gasless AI chat payments
+                            </p>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm text-dark-muted mb-2">Amount (USDC)</label>
+                                    <label className="block text-sm text-dark-muted mb-2">Session Amount (USDC)</label>
                                     <input
                                         type="number"
-                                        value={depositAmount}
-                                        onChange={(e) => setDepositAmount(e.target.value)}
+                                        value={sessionAmount}
+                                        onChange={(e) => setSessionAmount(e.target.value)}
                                         className="w-full px-4 py-2 bg-dark-bg border border-dark-border rounded-lg focus:outline-none focus:border-brand-400"
                                         placeholder="10"
                                         step="0.01"
                                         min="0"
                                     />
+                                    <p className="text-xs text-dark-muted mt-1">
+                                        This creates a channel. You'll pay gas only twice: open & close.
+                                    </p>
                                 </div>
                                 {error && (
                                     <div className="text-red-400 text-sm">{error}</div>
                                 )}
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={() => setShowDepositModal(false)}
+                                        onClick={() => setShowSessionModal(false)}
                                         className="flex-1 px-4 py-2 bg-dark-bg hover:bg-dark-border text-dark-text rounded-lg transition-colors"
                                     >
                                         Cancel
                                     </button>
                                     <button
-                                        onClick={handleDeposit}
+                                        onClick={handleStartSession}
                                         disabled={isLoading}
                                         className="flex-1 px-4 py-2 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-600 text-white rounded-lg transition-colors"
                                     >
-                                        {isLoading ? "Processing..." : "Deposit"}
+                                        {isLoading ? "Creating..." : "Start Session"}
                                     </button>
                                 </div>
                             </div>

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChatService } from "../lib/api";
+import { useYellow } from "./useYellow";
 
 export function useChats(walletAddress: string | undefined) {
   return useQuery({
@@ -34,9 +35,37 @@ export function useCreateChat() {
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
+  const { updateChannelState, activeChannel } = useYellow();
+
   return useMutation({
-    mutationFn: ({ chatId, content }: { chatId: string; content: string }) =>
-      ChatService.sendMessage(chatId, content),
+    mutationFn: async ({
+      chatId,
+      content,
+    }: {
+      chatId: string;
+      content: string;
+    }) => {
+      const response = await ChatService.sendMessage(chatId, content);
+
+      // If there's an active channel and the AI response has a cost, update the channel state off-chain
+      if (activeChannel && response.cost_usdc) {
+        try {
+          console.log(
+            `💫 Updating channel state for ${response.cost_usdc} USDC (off-chain)`,
+          );
+          await updateChannelState(Number(response.cost_usdc));
+          console.log(
+            "✅ Channel state updated successfully (instant, no gas!)",
+          );
+        } catch (error) {
+          console.error("Failed to update channel state:", error);
+          // Don't fail the whole mutation if state update fails
+          // The message was still sent successfully
+        }
+      }
+
+      return response;
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["chat", variables.chatId] });
     },

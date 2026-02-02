@@ -74,6 +74,11 @@ async fn main() -> std::io::Result<()> {
             .service(api::chat::get_chats_handler)
             .service(api::chat::get_chat_history_handler)
             .service(api::chat::send_message_handler)
+            .service(api::channel::create_channel_handler)
+            .service(api::channel::get_channel_handler)
+            .service(api::channel::update_state_handler)
+            .service(api::channel::get_states_handler)
+            .service(api::channel::close_channel_handler)
             .split_for_parts();
 
         app.service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", app_api))

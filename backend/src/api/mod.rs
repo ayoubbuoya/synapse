@@ -1,5 +1,6 @@
 use actix_web::{HttpResponse, Responder, get};
 
+pub mod channel;
 pub mod chat;
 
 #[utoipa::path(

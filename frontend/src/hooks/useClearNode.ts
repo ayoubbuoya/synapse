@@ -4,6 +4,8 @@ import { useWalletClient, useAccount } from "wagmi";
 import {
   createAuthRequestMessage,
   createAuthVerifyMessage,
+  createAuthVerifyMessageFromChallenge,
+  createEIP712AuthMessageSigner,
 } from "@erc7824/nitrolite";
 import type { Address } from "viem";
 
@@ -39,7 +41,24 @@ interface AppSession {
 
 export const useClearNode = () => {
   const { data: walletClient } = useWalletClient();
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
+
+  // Use refs to avoid stale closures in WebSocket callbacks
+  const walletClientRef = useRef(walletClient);
+  const addressRef = useRef(address);
+  const chainIdRef = useRef(chainId);
+
+  useEffect(() => {
+    walletClientRef.current = walletClient;
+  }, [walletClient]);
+
+  useEffect(() => {
+    addressRef.current = address;
+  }, [address]);
+
+  useEffect(() => {
+    chainIdRef.current = chainId;
+  }, [chainId]);
 
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -94,6 +113,18 @@ export const useClearNode = () => {
           };
         } else if (rawMessage.req && Array.isArray(rawMessage.req)) {
           const [requestId, method, params] = rawMessage.req;
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
+        } else if (
+          rawMessage.res &&
+          Array.isArray(rawMessage.res) &&
+          rawMessage.res.length === 4
+        ) {
+          // Handle 4-element response format: [requestId, method, params, timestamp]
+          const [requestId, method, params] = rawMessage.res;
           message = {
             type: method as MessageType,
             requestId: requestId,
@@ -166,7 +197,8 @@ export const useClearNode = () => {
 
   // Authenticate with ClearNode
   const authenticate = async (websocket: WebSocket) => {
-    if (!address) {
+    const currentAddress = addressRef.current;
+    if (!currentAddress) {
       console.error("No wallet address available");
       return;
     }
@@ -175,13 +207,13 @@ export const useClearNode = () => {
       const requestId = generateRequestId();
       const authRequest = await createAuthRequestMessage(
         {
-          address: address,
-          session_key: address, // Using same address for session key for now
+          address: currentAddress,
+          session_key: currentAddress, // Using same address for session key for now
           app_name: "Synapse",
           allowances: [],
           expire: Math.floor(Date.now() / 1000 + 3600 * 24).toString(), // 24h expiration
-          scope: "app",
-          application: address, // Self-hosted app
+          scope: "user",
+          application: currentAddress,
         },
         requestId,
       );
@@ -199,8 +231,12 @@ export const useClearNode = () => {
     websocket: WebSocket,
     message: ClearNodeMessage,
   ) => {
-    if (!walletClient || !address) {
-      console.error("Wallet client not available");
+    const client = walletClientRef.current;
+    const currentAddress = addressRef.current;
+    const currentChainId = chainIdRef.current;
+
+    if (!client || !currentAddress || !currentChainId) {
+      console.error("Wallet client or chainId not available");
       return;
     }
 
@@ -212,24 +248,66 @@ export const useClearNode = () => {
         return;
       }
 
-      // Create signer matching MessageSigner type: (payload: RPCData) => Promise<Hex>
-      const signer = async (payload: any) => {
-        const message = JSON.stringify(payload);
-        return await walletClient.signMessage({
-          message,
-          account: address,
-        });
+      // Domain definition for Synapse app (Standard RPC)
+      const domain = {
+        name: "Synapse",
+        version: "1",
+        chainId: currentChainId,
+      };
+
+      const types = {
+        RPC: [{ name: "payload", type: "string" }],
       };
 
       const requestId = generateRequestId();
-      const authVerify = await createAuthVerifyMessage(
-        signer,
-        message.payload,
-        requestId,
-      );
 
-      websocket.send(authVerify);
-      console.log("🔐 Sent auth verification");
+      // 1. Sign the challenge with EIP-712 (Proof of Wallet Ownership)
+      const challengeSignature = await client.signTypedData({
+        account: currentAddress,
+        domain,
+        types: {
+          Challenge: [{ name: "message", type: "string" }],
+        },
+        primaryType: "Challenge",
+        message: {
+          message: challenge,
+        },
+      });
+
+      // 2. Construct RPC Payload (4-element format)
+      const timestamp = Date.now();
+      const rpcPayload = [
+        requestId,
+        "auth_verify",
+        {
+          challenge: challenge,
+          signature: challengeSignature,
+        },
+        timestamp,
+      ];
+
+      // 3. Sign RPC Payload (Proof of Session/Transport - EIP-712)
+      console.log("📝 Signing RPC payload (EIP-712 RPC):", rpcPayload);
+      const serializedPayload = JSON.stringify(rpcPayload);
+
+      const transportSignature = await client.signTypedData({
+        account: currentAddress,
+        domain,
+        types,
+        primaryType: "RPC",
+        message: {
+          payload: serializedPayload,
+        },
+      });
+
+      // 4. Construct Final Message
+      const messageToSend = JSON.stringify({
+        req: rpcPayload,
+        sig: [transportSignature],
+      });
+
+      websocket.send(messageToSend);
+      console.log("🔐 Sent auth verification (Manual EIP-712)");
     } catch (err) {
       console.error("Failed to handle auth challenge:", err);
       setError("Authentication verification failed");

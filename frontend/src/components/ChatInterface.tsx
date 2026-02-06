@@ -6,11 +6,13 @@ import type { Message } from '../types';
 
 interface ChatInterfaceProps {
     chatId: string;
+    activeChannel?: any;
+    updateChannelState?: (cost: number) => Promise<any>;
 }
 
-export function ChatInterface({ chatId }: ChatInterfaceProps) {
+export function ChatInterface({ chatId, activeChannel, updateChannelState }: ChatInterfaceProps) {
     const { data: history, isLoading } = useChat(chatId);
-    const sendMessage = useSendMessage();
+    const sendMessage = useSendMessage(activeChannel, updateChannelState);
     const [input, setInput] = useState('');
     const bottomRef = useRef<HTMLDivElement>(null);
 

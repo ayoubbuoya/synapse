@@ -18,7 +18,6 @@ export function Dashboard({ address }: DashboardProps) {
         approveTokens,
         depositFunds,
         createChannelWithSession,
-        updateChannelState,
         closeChannelAndSession,
         activeChannel,
         isClearNodeReady,
@@ -45,8 +44,10 @@ export function Dashboard({ address }: DashboardProps) {
                 return;
             }
 
-            // Approve and deposit tokens
+            // First approve tokens
             await approveTokens(amount);
+
+            // Then deposit
             await depositFunds(amount);
 
             // Create channel and session
@@ -61,7 +62,7 @@ export function Dashboard({ address }: DashboardProps) {
 
     // End the current session (close channel)
     const handleEndSession = async () => {
-        if (!confirm("Are you sure you want to end this session? The channel will be settled on-chain.")) {
+        if (!confirm("Are you sure you want to end this session? The channel will be closed and settled on-chain.")) {
             return;
         }
 
@@ -138,13 +139,11 @@ export function Dashboard({ address }: DashboardProps) {
                                     <span>{isClearNodeReady ? 'ClearNode' : 'Connecting...'}</span>
                                 </div>
 
-                                {/* Balance Display - only show when no active session */}
-                                {!activeChannel && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface rounded-lg border border-dark-border">
-                                        <span className="text-sm text-dark-muted">Custody:</span>
-                                        <span className="text-sm font-semibold text-brand-400">{balance} USDC</span>
-                                    </div>
-                                )}
+                                {/* Balance Display */}
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface rounded-lg border border-dark-border">
+                                    <span className="text-sm text-dark-muted">Balance:</span>
+                                    <span className="text-sm font-semibold text-brand-400">{balance} USDC</span>
+                                </div>
 
                                 {/* Session Status & Controls */}
                                 {activeChannel ? (
@@ -226,12 +225,7 @@ export function Dashboard({ address }: DashboardProps) {
 
                 <main className="flex-1 overflow-hidden relative">
                     {selectedChatId ? (
-                        <ChatInterface
-                            chatId={selectedChatId}
-                            key={selectedChatId}
-                            activeChannel={activeChannel}
-                            updateChannelState={updateChannelState}
-                        />
+                        <ChatInterface chatId={selectedChatId} key={selectedChatId} />
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
                             <div className="p-6 bg-dark-surface rounded-full shadow-2xl shadow-brand-900/20">

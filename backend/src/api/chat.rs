@@ -253,8 +253,8 @@ pub async fn send_message_handler(
     // For production, use a proper tokenizer like tiktoken
     let tokens_used = estimate_tokens(&ai_response_content);
 
-    // Calculate cost: 100 tokens = 0.001 USDC
-    let cost_usdc = rust_decimal::Decimal::from(tokens_used) * rust_decimal::Decimal::new(1, 5); // 0.00001 per token
+    // Calculate cost: 100 tokens = 0.1 USDC
+    let cost_usdc = rust_decimal::Decimal::from(tokens_used) * rust_decimal::Decimal::new(1, 2); // 0.01 per token
 
     // Get chat to find wallet address
     let chat_record = match chat::get_chat_by_id(&state.db, chat_id).await {

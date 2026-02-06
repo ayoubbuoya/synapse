@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChatService } from "../lib/api";
-import { useYellow } from "./useYellow";
 
 export function useChats(walletAddress: string | undefined) {
   return useQuery({
@@ -33,9 +32,11 @@ export function useCreateChat() {
   });
 }
 
-export function useSendMessage() {
+export function useSendMessage(
+  activeChannel?: any,
+  updateChannelState?: (cost: number) => Promise<any>,
+) {
   const queryClient = useQueryClient();
-  const { updateChannelState, activeChannel } = useYellow();
 
   return useMutation({
     mutationFn: async ({
@@ -47,13 +48,18 @@ export function useSendMessage() {
     }) => {
       const response = await ChatService.sendMessage(chatId, content);
 
+      // Debug logging
+      console.log("🔍 Debug - activeChannel:", activeChannel);
+      console.log("🔍 Debug - response.cost_usdc:", response.cost_usdc);
+
       // If there's an active channel and the AI response has a cost, update the channel state off-chain
-      if (activeChannel && response.cost_usdc) {
+      if (activeChannel && response.cost_usdc && updateChannelState) {
         try {
+          const costNumber = Number(response.cost_usdc);
           console.log(
-            `💫 Updating channel state for ${response.cost_usdc} USDC (off-chain)`,
+            `💫 Updating channel state for ${costNumber} USDC (off-chain)`,
           );
-          await updateChannelState(Number(response.cost_usdc));
+          await updateChannelState(costNumber);
           console.log(
             "✅ Channel state updated successfully (instant, no gas!)",
           );
@@ -62,6 +68,15 @@ export function useSendMessage() {
           // Don't fail the whole mutation if state update fails
           // The message was still sent successfully
         }
+      } else {
+        console.log(
+          "⚠️ Skipping channel update - activeChannel:",
+          !!activeChannel,
+          "updateChannelState:",
+          !!updateChannelState,
+          "cost_usdc:",
+          response.cost_usdc,
+        );
       }
 
       return response;

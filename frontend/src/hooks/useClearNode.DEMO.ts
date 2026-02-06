@@ -1,12 +1,14 @@
-// src/hooks/useClearNode.ts - DEMO VERSION FOR VIDEO RECORDING
-// Shows both MetaMask signatures but handles second one failing gracefully
+// src/hooks/useClearNode.ts - DEMO VERSION
+// This version bypasses the second signature for video recording purposes
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useWalletClient, useAccount } from "wagmi";
 import { createAuthRequestMessage } from "@erc7824/nitrolite";
 import type { Address } from "viem";
 
+// ClearNode WebSocket URL
 const CLEARNODE_URL = "wss://clearnet-sandbox.yellow.com/ws";
 
+// Message types
 type MessageType =
   | "auth.request"
   | "auth.challenge"
@@ -37,6 +39,7 @@ export const useClearNode = () => {
   const { data: walletClient } = useWalletClient();
   const { address, chainId } = useAccount();
 
+  // Use refs to avoid stale closures in WebSocket callbacks
   const walletClientRef = useRef(walletClient);
   const addressRef = useRef(address);
   const chainIdRef = useRef(chainId);
@@ -66,9 +69,11 @@ export const useClearNode = () => {
     new Map(),
   );
 
+  // Generate unique request ID (must be number)
   const generateRequestId = () =>
     Math.floor(Date.now() + Math.random() * 1000000);
 
+  // Connect to ClearNode
   const connect = useCallback(() => {
     if (ws?.readyState === WebSocket.OPEN) {
       console.log("Already connected to ClearNode");
@@ -82,22 +87,45 @@ export const useClearNode = () => {
       console.log("✅ Connected to ClearNode");
       setIsConnected(true);
       setError(null);
+
+      // Start authentication flow
       authenticate(websocket);
     };
 
     websocket.onmessage = (event) => {
       try {
         const rawMessage = JSON.parse(event.data);
-        console.log("📨 Received:", rawMessage);
+        console.log("📨 Received raw:", rawMessage);
 
         let message: ClearNodeMessage | null = null;
 
+        // Parse RPC format
         if (rawMessage.res && Array.isArray(rawMessage.res)) {
           const [requestId, method, params] = rawMessage.res;
-          message = { type: method as MessageType, requestId, payload: params };
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
         } else if (rawMessage.req && Array.isArray(rawMessage.req)) {
           const [requestId, method, params] = rawMessage.req;
-          message = { type: method as MessageType, requestId, payload: params };
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
+        } else if (
+          rawMessage.res &&
+          Array.isArray(rawMessage.res) &&
+          rawMessage.res.length === 4
+        ) {
+          // Handle 4-element response format: [requestId, method, params, timestamp]
+          const [requestId, method, params] = rawMessage.res;
+          message = {
+            type: method as MessageType,
+            requestId: requestId,
+            payload: params,
+          };
         }
 
         if (!message) {
@@ -105,14 +133,18 @@ export const useClearNode = () => {
           return;
         }
 
+        console.log("📨 Parsed:", message);
+
+        // Handle specific message types
         switch (message.type) {
-          case "auth_challenge":
+          case "auth_challenge": // RPC method name uses underscore
           case "auth.challenge":
             handleAuthChallenge(websocket, message);
             break;
           case "auth_success":
             setIsAuthenticated(true);
             console.log("✅ Authenticated with ClearNode");
+            // Resolve pending auth request
             if (
               message.requestId &&
               pendingRequests.current.has(message.requestId)
@@ -123,6 +155,7 @@ export const useClearNode = () => {
             }
             break;
           default:
+            // Handle response to pending request
             if (
               message.requestId &&
               pendingRequests.current.has(message.requestId)
@@ -132,8 +165,12 @@ export const useClearNode = () => {
               pendingRequests.current.delete(message.requestId);
               return;
             }
+
+            // Call registered handler if exists
             const handler = messageHandlers.current.get(message.type);
-            if (handler) handler(message);
+            if (handler) {
+              handler(message);
+            }
         }
       } catch (err) {
         console.error("Failed to parse message:", err);
@@ -142,24 +179,25 @@ export const useClearNode = () => {
 
     websocket.onerror = (event) => {
       console.error("❌ WebSocket error:", event);
+      // DEMO MODE: Don't set error, just log it
       console.log("🎬 DEMO: Ignoring WebSocket error");
     };
 
     websocket.onclose = () => {
       console.log("🔌 Disconnected from ClearNode");
       setIsConnected(false);
-      console.log("🎬 DEMO: Keeping authenticated state for demo");
+      // DEMO MODE: Keep authenticated state
+      console.log("🎬 DEMO: Keeping authenticated state");
     };
 
     setWs(websocket);
   }, [ws]);
 
+  // Authenticate with ClearNode - DEMO MODE
   const authenticate = async (websocket: WebSocket) => {
     const currentAddress = addressRef.current;
     if (!currentAddress) {
       console.error("No wallet address available");
-      console.log("🎬 DEMO: Marking as authenticated anyway");
-      setIsAuthenticated(true);
       return;
     }
 
@@ -182,12 +220,15 @@ export const useClearNode = () => {
       console.log("🔐 Sent auth request");
     } catch (err) {
       console.error("Failed to create auth request:", err);
-      console.log("🎬 DEMO: Marking as authenticated anyway");
+      // DEMO MODE: Ignore error and mark as authenticated
+      console.log(
+        "🎬 DEMO: Ignoring auth request error, marking as authenticated",
+      );
       setIsAuthenticated(true);
     }
   };
 
-  // DEMO MODE: Show both signatures but handle second one failing gracefully
+  // Handle authentication challenge - DEMO MODE (bypasses second signature)
   const handleAuthChallenge = async (
     websocket: WebSocket,
     message: ClearNodeMessage,
@@ -197,7 +238,11 @@ export const useClearNode = () => {
     const currentChainId = chainIdRef.current;
 
     if (!client || !currentAddress || !currentChainId) {
-      console.log("🎬 DEMO: No wallet client, marking as authenticated anyway");
+      console.error("Wallet client or chainId not available");
+      // DEMO MODE: Mark as authenticated anyway
+      console.log(
+        "🎬 DEMO: No wallet client, but marking as authenticated anyway",
+      );
       setIsAuthenticated(true);
       return;
     }
@@ -206,24 +251,25 @@ export const useClearNode = () => {
       const challenge =
         message.payload?.challenge_message || message.payload?.challenge;
       if (!challenge) {
-        console.log("🎬 DEMO: No challenge, marking as authenticated anyway");
+        console.error("No challenge in message");
+        // DEMO MODE: Mark as authenticated anyway
+        console.log(
+          "🎬 DEMO: No challenge, but marking as authenticated anyway",
+        );
         setIsAuthenticated(true);
         return;
       }
 
-      console.log("🔐 Step 1: Signing wallet ownership challenge...");
+      console.log("🎬 DEMO MODE: Signing first challenge only...");
 
+      // Domain definition for Synapse app
       const domain = {
         name: "Synapse",
         version: "1",
         chainId: currentChainId,
       };
 
-      const types = {
-        RPC: [{ name: "payload", type: "string" }],
-      };
-
-      // 1. Sign the challenge (FIRST SIGNATURE - will show in MetaMask)
+      // 1. Sign the challenge with EIP-712 (Proof of Wallet Ownership)
       const challengeSignature = await client.signTypedData({
         account: currentAddress,
         domain,
@@ -237,10 +283,18 @@ export const useClearNode = () => {
       });
 
       console.log("✅ First signature completed");
+      console.log(
+        "🎬 DEMO MODE: Skipping second signature, simulating success...",
+      );
 
-      // 2. Construct RPC Payload
+      // DEMO MODE: Skip the second signature and just mark as authenticated
+      setTimeout(() => {
+        console.log("✅ DEMO: Simulated authentication success");
+        setIsAuthenticated(true);
+      }, 1000);
+
+      // Still try to send a message (will fail in background, but we ignore it)
       const requestId = generateRequestId();
-      const timestamp = Date.now();
       const rpcPayload = [
         requestId,
         "auth_verify",
@@ -248,62 +302,34 @@ export const useClearNode = () => {
           challenge: challenge,
           signature: challengeSignature,
         },
-        timestamp,
+        Date.now(),
       ];
 
-      console.log("🔐 Step 2: Signing transport layer (RPC)...");
-      const serializedPayload = JSON.stringify(rpcPayload);
-
-      // 2. Sign RPC Payload (SECOND SIGNATURE - will show in MetaMask)
-      let transportSignature;
-      try {
-        transportSignature = await client.signTypedData({
-          account: currentAddress,
-          domain,
-          types,
-          primaryType: "RPC",
-          message: {
-            payload: serializedPayload,
-          },
-        });
-        console.log("✅ Second signature completed");
-      } catch (sigError) {
-        console.log(
-          "⚠️ Second signature failed (expected for demo):",
-          sigError,
-        );
-        console.log("🎬 DEMO: Using dummy signature and continuing anyway...");
-        transportSignature =
-          "0x0000000000000000000000000000000000000000000000000000000000000000";
-      }
-
-      // 3. Send the message
       const messageToSend = JSON.stringify({
         req: rpcPayload,
-        sig: [transportSignature],
+        sig: [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+        ], // Dummy signature
       });
 
       websocket.send(messageToSend);
-      console.log("📤 Sent auth verification");
-
-      // 4. DEMO MODE: Mark as authenticated after a delay, regardless of server response
-      setTimeout(() => {
-        console.log(
-          "🎬 DEMO: Marking as authenticated (bypassing server validation)",
-        );
-        setIsAuthenticated(true);
-      }, 2000);
+      console.log(
+        "🎬 DEMO: Sent auth (will show 'invalid signature' in background, but we ignore it)",
+      );
     } catch (err) {
       console.error("Failed to handle auth challenge:", err);
+      // DEMO MODE: Even if it fails, mark as authenticated
       console.log("🎬 DEMO: Ignoring error, marking as authenticated anyway");
       setIsAuthenticated(true);
     }
   };
 
+  // Send message and wait for response
   const sendMessage = useCallback(
     (message: string, requestId?: number): Promise<any> => {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
+          // DEMO MODE: Resolve with dummy response instead of rejecting
           console.log(
             "🎬 DEMO: WebSocket not connected, returning dummy response",
           );
@@ -316,9 +342,11 @@ export const useClearNode = () => {
 
         ws.send(message);
 
+        // Timeout after 5 seconds (shorter for demo)
         setTimeout(() => {
           if (pendingRequests.current.has(id)) {
             pendingRequests.current.delete(id);
+            // DEMO MODE: Resolve with dummy response instead of rejecting
             console.log("🎬 DEMO: Request timeout, returning dummy response");
             resolve({ payload: { success: true } });
           }
@@ -328,6 +356,7 @@ export const useClearNode = () => {
     [ws],
   );
 
+  // Register message handler
   const onMessage = useCallback(
     (type: MessageType, handler: (message: any) => void) => {
       messageHandlers.current.set(type, handler);
@@ -336,6 +365,7 @@ export const useClearNode = () => {
     [],
   );
 
+  // Disconnect
   const disconnect = useCallback(() => {
     if (ws) {
       ws.close();
@@ -346,9 +376,12 @@ export const useClearNode = () => {
     }
   }, [ws]);
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (ws) ws.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, [ws]);
 

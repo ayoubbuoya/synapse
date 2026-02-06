@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Sidebar } from './Sidebar';
 import { ChatInterface } from './ChatInterface';
+import { EnsProfile } from './EnsProfile';
 import { Sparkles, Menu } from 'lucide-react';
 import { useChats } from '../hooks/useChat';
 import { useYellow } from '../hooks/useYellow';
@@ -172,6 +173,10 @@ export function Dashboard({ address }: DashboardProps) {
                                 )}
                             </>
                         )}
+                        <EnsProfile
+                            address={address}
+                            className="bg-dark-surface py-1.5 px-3 rounded-lg border border-dark-border"
+                        />
                         <ConnectButton accountStatus="avatar" chainStatus="icon" />
                     </div>
                 </header>

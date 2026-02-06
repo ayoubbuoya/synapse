@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { toast } from 'react-toastify';
 import { Sidebar } from './Sidebar';
 import { ChatInterface } from './ChatInterface';
 import { EnsProfile } from './EnsProfile';
@@ -42,7 +43,7 @@ export function Dashboard({ address }: DashboardProps) {
         try {
             const amount = parseFloat(sessionAmount);
             if (isNaN(amount) || amount <= 0) {
-                alert("Please enter a valid amount");
+                toast.error("Please enter a valid amount");
                 return;
             }
 
@@ -54,9 +55,9 @@ export function Dashboard({ address }: DashboardProps) {
             await createChannelWithSession(amount);
 
             setShowSessionModal(false);
-            alert(`Session started with ${amount} USDC!`);
+            toast.success(`Session started with ${amount} USDC!`);
         } catch (error: any) {
-            alert(`Failed to start session: ${error?.message || "Unknown error"}`);
+            toast.error(`Failed to start session: ${error?.message || "Unknown error"}`);
         }
     };
 
@@ -68,9 +69,9 @@ export function Dashboard({ address }: DashboardProps) {
 
         try {
             await closeChannelAndSession();
-            alert("Session ended successfully!");
+            toast.success("Session ended successfully!");
         } catch (error: any) {
-            alert(`Failed to end session: ${error?.message || "Unknown error"}`);
+            toast.error(`Failed to end session: ${error?.message || "Unknown error"}`);
         }
     };
 
@@ -140,12 +141,12 @@ export function Dashboard({ address }: DashboardProps) {
                                 </div>
 
                                 {/* Balance Display - only show when no active session */}
-                                {!activeChannel && (
+                                {/* {!activeChannel && (
                                     <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface rounded-lg border border-dark-border">
                                         <span className="text-sm text-dark-muted">Custody:</span>
                                         <span className="text-sm font-semibold text-brand-400">{balance} USDC</span>
                                     </div>
-                                )}
+                                )} */}
 
                                 {/* Session Status & Controls */}
                                 {activeChannel ? (

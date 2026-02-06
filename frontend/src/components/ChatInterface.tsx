@@ -8,9 +8,10 @@ interface ChatInterfaceProps {
     chatId: string;
     activeChannel?: any;
     updateChannelState?: (cost: number) => Promise<any>;
+    userAddress?: string;
 }
 
-export function ChatInterface({ chatId, activeChannel, updateChannelState }: ChatInterfaceProps) {
+export function ChatInterface({ chatId, activeChannel, updateChannelState, userAddress }: ChatInterfaceProps) {
     const { data: history, isLoading } = useChat(chatId);
     const sendMessage = useSendMessage(activeChannel, updateChannelState);
     const [input, setInput] = useState('');
@@ -70,7 +71,7 @@ export function ChatInterface({ chatId, activeChannel, updateChannelState }: Cha
                 ) : (
                     <>
                         {displayMessages.map((msg) => (
-                            <MessageBubble key={msg.id} message={msg} />
+                            <MessageBubble key={msg.id} message={msg} userAddress={userAddress} />
                         ))}
 
                         {sendMessage.isPending && (

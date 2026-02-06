@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Sidebar } from './Sidebar';
 import { ChatInterface } from './ChatInterface';
+import { EnsProfile } from './EnsProfile';
 import { Sparkles, Menu } from 'lucide-react';
 import { useChats } from '../hooks/useChat';
 import { useYellow } from '../hooks/useYellow';
@@ -231,6 +232,7 @@ export function Dashboard({ address }: DashboardProps) {
                             key={selectedChatId}
                             activeChannel={activeChannel}
                             updateChannelState={updateChannelState}
+                            userAddress={address}
                         />
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
@@ -238,7 +240,10 @@ export function Dashboard({ address }: DashboardProps) {
                                 <Sparkles className="w-12 h-12 text-brand-400" />
                             </div>
                             <div className="space-y-2">
-                                <h2 className="text-2xl font-bold">Welcome to Synapse</h2>
+                                <h2 className="text-2xl font-bold flex flex-col items-center gap-2">
+                                    <span>Welcome to Synapse,</span>
+                                    <EnsProfile address={address} showAvatar={false} className="text-brand-400" />
+                                </h2>
                                 <p className="text-dark-muted max-w-md mx-auto">
                                     Select a chat from the sidebar or start a new conversation to begin your journey with decentralized AI.
                                 </p>

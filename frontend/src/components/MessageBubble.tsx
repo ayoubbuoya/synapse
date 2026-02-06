@@ -1,13 +1,15 @@
 import Markdown from 'react-markdown';
 import { User, Sparkles } from 'lucide-react';
+import { EnsProfile } from './EnsProfile';
 import { cn } from '../lib/utils';
 import type { Message } from '../types';
 
 interface MessageBubbleProps {
     message: Message;
+    userAddress?: string;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, userAddress }: MessageBubbleProps) {
     const isUser = message.role === 'user';
 
     return (
@@ -23,7 +25,20 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     isUser ? "bg-brand-600 text-white" : "bg-purple-600 text-white"
                 )}
             >
-                {isUser ? <User className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                {isUser ? (
+                    userAddress ? (
+                        <EnsProfile
+                            address={userAddress}
+                            showName={false}
+                            className="w-full h-full"
+                            avatarClassName="w-8 h-8 rounded-full"
+                        />
+                    ) : (
+                        <User className="w-5 h-5" />
+                    )
+                ) : (
+                    <Sparkles className="w-5 h-5" />
+                )}
             </div>
 
             <div

@@ -1,4 +1,5 @@
 import { Plus, MessageSquare, Loader2 } from 'lucide-react';
+import { EnsProfile } from './EnsProfile';
 import { useChats, useCreateChat } from '../hooks/useChat';
 import { cn } from '../lib/utils';
 
@@ -65,6 +66,9 @@ export function Sidebar({ walletAddress, selectedChatId, onSelectChat }: Sidebar
 
             <div className="p-4 border-t border-dark-border">
                 {/* User profile or settings could go here */}
+                <div className="text-xs text-dark-muted text-center mb-2">
+                    <EnsProfile address={walletAddress} className="justify-center" />
+                </div>
                 <div className="text-xs text-dark-muted text-center">
                     synapse v0.1.0
                 </div>

@@ -175,7 +175,108 @@ export function Dashboard({ address }: DashboardProps) {
                                 )}
                             </>
                         )}
-                        <ConnectButton accountStatus="avatar" chainStatus="icon" />
+                        <ConnectButton.Custom>
+                            {({
+                                account,
+                                chain,
+                                openAccountModal,
+                                openChainModal,
+                                openConnectModal,
+                                authenticationStatus,
+                                mounted,
+                            }) => {
+                                const ready = mounted && authenticationStatus !== 'loading';
+                                const connected =
+                                    ready &&
+                                    authenticationStatus !== 'unauthenticated' &&
+                                    account &&
+                                    chain;
+
+                                return (
+                                    <div
+                                        {...(!ready && {
+                                            'aria-hidden': true,
+                                            'style': {
+                                                opacity: 0,
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                            },
+                                        })}
+                                    >
+                                        {(() => {
+                                            if (!connected) {
+                                                return (
+                                                    <button
+                                                        onClick={openConnectModal}
+                                                        type="button"
+                                                        className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                                    >
+                                                        Connect Wallet
+                                                    </button>
+                                                );
+                                            }
+
+                                            if (chain.unsupported) {
+                                                return (
+                                                    <button
+                                                        onClick={openChainModal}
+                                                        type="button"
+                                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                                    >
+                                                        Wrong Network
+                                                    </button>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={openChainModal}
+                                                        type="button"
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface hover:bg-dark-border border border-dark-border rounded-lg transition-colors"
+                                                    >
+                                                        {chain.hasIcon && (
+                                                            <div
+                                                                style={{
+                                                                    background: chain.iconBackground,
+                                                                    width: 18,
+                                                                    height: 18,
+                                                                    borderRadius: 999,
+                                                                    overflow: 'hidden',
+                                                                }}
+                                                            >
+                                                                {chain.iconUrl && (
+                                                                    <img
+                                                                        alt={chain.name ?? 'Chain icon'}
+                                                                        src={chain.iconUrl}
+                                                                        style={{ width: 18, height: 18 }}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        <span className="text-sm font-medium text-dark-text hidden sm:block">
+                                                            {chain.name}
+                                                        </span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={openAccountModal}
+                                                        type="button"
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-dark-surface hover:bg-dark-border border border-dark-border rounded-lg transition-colors group"
+                                                    >
+                                                        <EnsProfile
+                                                            address={account.address}
+                                                            showAvatar={true}
+                                                            className="group-hover:opacity-80 transition-opacity"
+                                                        />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                );
+                            }}
+                        </ConnectButton.Custom>
                     </div>
                 </header>
 

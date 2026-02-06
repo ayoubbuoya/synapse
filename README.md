@@ -1,297 +1,139 @@
 # 🧠 Synapse: The Neural Economy Protocol
 
-**Tagline:** Real-time, gasless payment streams for Autonomous AI Agents.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Network: Polygon Amoy](https://img.shields.io/badge/Network-Polygon%20Amoy-8247E5)](https://polygon.technology/)
+[![Powered By: Yellow](https://img.shields.io/badge/Powered%20By-Yellow%20Network-F7E02E)](https://www.yellow.org/)
+[![Built With: Rust](https://img.shields.io/badge/Built%20With-Rust-black)](https://www.rust-lang.org/)
+
+> **"Streaming money as fast as data."**
 
 ---
 
-## **The Problem**
+## 🔮 The Vision: A Financial Layer for Autonomous Agents
 
-AI Agents are evolving rapidly, but they are "economically paralyzed."
+**Synapse** is not just a chat application; it is the blueprint for the **Agentic Economy**.
 
-- **Latency Mismatch:** An AI Agent "thinks" in milliseconds, but blockchains settle in seconds (or minutes). An agent cannot wait 12 seconds for an Ethereum block just to pay $0.001 for a single search query.
-- **Gas Friction:** It is economically impossible to pay $0.50 in gas to send a $0.01 micro-payment.
-- **Subscription Fatigue:** Agents cannot manage 50 different monthly credit card subscriptions. They need a "Pay-As-You-Go" protocol to buy resources (storage, compute, data) per unit.
+We are building the **Synapse Infra SDK**—a universal adapter that allows any AI agent, API, or digital service to accept **real-time, gasless micro-payments**.
 
-## **The Solution**
+### Why This Matters?
 
-**Synapse** is a state-channel gateway that allows AI Agents to stream money as fast as they stream data.
-By combining **Yellow Network's Nitrolite Protocol** (for off-chain settlement) with **Rig-Core** (for high-performance Rust AI orchestration), Synapse enables a machine-to-machine economy where agents pay _per token generated_ or _per API call_ instantly, with zero gas.
+We are moving towards a world of billions of autonomous agents. These agents will need to trade resources (compute, storage, data) with each other in milliseconds.
 
----
+- **Credit cards don't work for software.**
+- **Blockchains are too slow for real-time interaction.**
+- **Gas fees kill micro-transactions.**
 
-## 💰 Pay-As-You-Go Pricing
-
-**100 AI tokens = 0.001 USDC**
-
-Every AI response is tracked and charged based on token usage. Users deposit USDC into the Nitrolite custody contract and payments are automatically deducted as they chat.
+**Synapse is the solution.** By leveraging **Yellow Network's State Channels**, we enable agents to open a direct financial "socket" to each other, streaming value frame-by-frame, token-by-token.
 
 ---
 
-## 🚀 Quick Start
+## ⚡ The Showcase: "Pay-As-You-Go" AI Assistant
+
+To demonstrate the power of this protocol, we have built the **Synapse Chat App**—a fully functional reference implementation.
+
+In this demo, users pay for AI inference **per token generated**.
+
+- **0.001 USDC** buys you **100 tokens**.
+- Payment happens **instantly** as the text appears on the screen.
+- **Zero Gas** after the initial channel open.
+
+---
+
+## 🛑 The Core Problem
+
+AI Agents are evolving rapidly, but they remain "economically paralyzed":
+
+1.  **Latency Mismatch:** An AI Agent "thinks" in milliseconds, but blockchains settle in seconds. An agent cannot wait 12 seconds for an Ethereum block to pay $0.001 for a search query.
+2.  **Gas Friction:** It is economically impossible to pay $0.50 in gas to settle a $0.01 micro-payment.
+3.  **Subscription Fatigue:** Autonomous agents cannot manage 50 different monthly SaaS subscriptions. They need a **Pay-As-You-Go** protocol.
+
+## ✅ The Solution: State Channels
+
+**Synapse** acts as a state-channel gateway. It combines:
+
+- **Yellow Network's Nitrolite Protocol**: For off-chain, high-frequency settlement.
+- **Rig-Core / Rust Backend**: For high-performance, safe AI orchestration.
+- **Polygon Amoy**: For secure on-chain custody.
+
+---
+
+## 🏗️ Architecture
+
+The system enables a **Machine-to-Machine (M2M)** economy where payments are settled instantly off-chain and only finalized on-chain when necessary.
+
+```mermaid
+graph TD
+    User((User/Agent)) -->|1. Open Channel| Contract["Nitrolite Custody\n(Polygon Amoy)"]
+    User -->|2. Sign Micro-Payment| Gateway["Synapse Gateway\n(Rust + Actix)"]
+
+    Gateway -->|3. Verify Sig| Yellow[Yellow Node]
+    Gateway -->|4. Request Inference| AI["Ollama / AI Model"]
+
+    AI -->|5. Stream Tokens| Gateway
+    Gateway -->|6. Stream Response| User
+
+    subgraph "Off-Chain (Zero Gas)"
+    Gateway <--> User
+    end
+```
+
+---
+
+## 🚀 Use Cases for the Synapse SDK
+
+While our demo focuses on Chat, the **Synapse SDK** will power:
+
+1.  **Agent-to-Agent Markets:** An Agent paying another Agent to perform a web search or execute a complex task.
+2.  **API Monetization:** Developers charging $0.0001 per API call instead of $20/month.
+3.  **Content Streaming:** Pay-per-second video or pay-per-paragraph reading.
+4.  **IoT Micropayments:** Sensor networks selling data streams in real-time.
+
+---
+
+## 💻 Tech Stack
+
+- **Frontend:** React, Vite, TailwindCSS (The User Interface)
+- **Settlement:** Yellow Network Nitrolite SDK
+- **Backend:** Rust (Actix-web), SQLx (High-Performance Orchestration)
+- **Database:** PostgreSQL (Ledger & History)
+- **AI Engine:** Ollama (Local LLM Inference)
+- **Blockchain:** Polygon Amoy Testnet
+
+---
+
+## 🛠️ Quick Start Guide
+
+Want to run the reference implementation?
 
 ### Prerequisites
 
-- **Node.js** 18+ and npm/pnpm
-- **Rust** 1.70+ and Cargo
+- **Node.js** 18+ & **Rust** 1.70+
 - **PostgreSQL** 14+
-- **Ollama** with a model installed (e.g., `gemma3:1b`)
-- **Wallet** with Polygon Amoy testnet USDC
+- **Ollama** (running `gemma3:1b` or similar)
+- **Wallet** with generic Polygon Amoy USDC
 
-### Backend Setup
-
-1. **Install PostgreSQL** and create a database:
-
-   ```sql
-   CREATE DATABASE synapse;
-   ```
-
-2. **Configure environment**:
-
-   ```bash
-   cd backend
-   cp .env.example .env
-   # Edit .env with your database credentials
-   ```
-
-3. **Run migrations**:
-
-   ```bash
-   cargo install sqlx-cli
-   sqlx migrate run
-   ```
-
-4. **Start Ollama** (in a separate terminal):
-
-   ```bash
-   ollama serve
-   ollama pull gemma3:1b
-   ```
-
-5. **Start the backend**:
-
-   ```bash
-   cargo run
-   ```
-
-   The API will be available at `http://localhost:8080`
-   Swagger docs at `http://localhost:8080/swagger-ui/`
-
-### Frontend Setup
-
-1. **Install dependencies**:
-
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. **Configure environment** (optional):
-
-   ```bash
-   # Create .env file if you need to change the API URL
-   VITE_API_URL=http://localhost:8080
-   ```
-
-3. **Start the development server**:
-
-   ```bash
-   npm run dev
-   ```
-
-   The app will be available at `http://localhost:5173`
-
----
-
-## 📖 How It Works
-
-### Payment Flow
-
-1. **Connect Wallet**: User connects their wallet using RainbowKit (Polygon Amoy testnet)
-
-2. **Initialize Yellow**: Click "Initialize Yellow" to set up the Nitrolite client
-
-3. **Deposit USDC**:
-   - Click "Deposit" button
-   - Enter amount (e.g., 10 USDC)
-   - Approve tokens (transaction 1)
-   - Deposit to custody contract (transaction 2)
-
-4. **Chat & Pay**:
-   - Create a new chat or select existing one
-   - Send messages to the AI
-   - Each AI response shows:
-     - Token count
-     - Cost in USDC (100 tokens = 0.001 USDC)
-   - Payments are tracked in the database
-
-5. **Monitor Balance**: Your balance is displayed in the header and updates after deposits
-
-### Architecture
-
-```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Frontend  │────────▶│   Backend    │────────▶│   Ollama    │
-│  (React +   │         │  (Rust +     │         │   (AI)      │
-│  Nitrolite) │         │   Actix)     │         │             │
-└─────────────┘         └──────────────┘         └─────────────┘
-       │                        │
-       │                        │
-       ▼                        ▼
-┌─────────────┐         ┌──────────────┐
-│  Nitrolite  │         │  PostgreSQL  │
-│   Custody   │         │  (Payments)  │
-│  Contract   │         │              │
-└─────────────┘         └──────────────┘
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Backend Issues
-
-**Database connection error:**
+### 1. Backend Setup
 
 ```bash
-# Check PostgreSQL is running
-psql -U postgres -d synapse
+# Create DB
+createdb synapse
 
-# Verify DATABASE_URL in .env
+# Setup Environment
+cd backend
+cp .env.example .env # Update with your credentials
+
+# Run Migrations & Start
+cargo install sqlx-cli
+sqlx migrate run
+cargo run
 ```
 
-**Ollama not responding:**
+### 2. Frontend Setup
 
 ```bash
-# Ensure Ollama is running
-ollama list
-
-# Pull the model if not available
-ollama pull gemma3:1b
-```
-
-### Frontend Issues
-
-**Wallet connection fails:**
-
-- Ensure you're on Polygon Amoy testnet (Chain ID: 80002)
-- Get testnet USDC from faucet
-
-**Deposit fails:**
-
-- Check you have enough USDC balance
-- Ensure you have MATIC for gas fees
-- Try refreshing the page and reconnecting wallet
-
-**Balance not updating:**
-
-- Wait for transaction confirmation
-- Refresh the page
-- Check transaction on PolygonScan
-
----
-
-## 📊 Database Schema
-
-### Tables
-
-- **users**: Wallet addresses
-- **chats**: Chat sessions
-- **messages**: Chat messages (user and assistant)
-- **payments**: Token usage and costs per message
-
-### Query Examples
-
-```sql
--- View recent payments
-SELECT * FROM payments ORDER BY created_at DESC LIMIT 10;
-
--- Total spent by user
-SELECT wallet_address, SUM(amount_usdc) as total_spent
-FROM payments
-GROUP BY wallet_address;
-
--- Average tokens per message
-SELECT AVG(tokens_used) as avg_tokens FROM payments;
-```
-
----
-
-## 🛠️ Development
-
-### Backend
-
-```bash
-# Run with auto-reload (requires cargo-watch)
-cargo install cargo-watch
-cargo watch -x run
-
-# Run tests
-cargo test
-
-# Check code
-cargo clippy
-```
-
-### Frontend
-
-```bash
-# Development
+cd frontend
+npm install
 npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint
-npm run lint
 ```
 
----
-
-## 📝 Environment Variables
-
-### Backend (.env)
-
-```bash
-DATABASE_URL=postgresql://user:password@localhost:5432/synapse
-MODEL_NAME=gemma3:1b
-PORT=8080
-```
-
-### Frontend (.env)
-
-```bash
-VITE_API_URL=http://localhost:8080
-```
-
----
-
-## 🌐 Deployment
-
-### Backend
-
-1. Set up PostgreSQL database
-2. Configure environment variables
-3. Run migrations: `sqlx migrate run`
-4. Build: `cargo build --release`
-5. Run: `./target/release/synapse`
-
-### Frontend
-
-1. Build: `npm run build`
-2. Deploy `dist/` folder to your hosting provider
-3. Configure `VITE_API_URL` to point to your backend
-
----
-
-## 📄 License
-
-MIT
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+The app will launch at `http://localhost:5173`. Connect your wallet, initialize the channel, and experience the future of payment streaming.

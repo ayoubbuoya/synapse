@@ -1,5 +1,5 @@
-import { useEnsName, useEnsAvatar } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { useEnsName, useEnsAvatar, useAccount } from "wagmi";
+import { mainnet, polygonAmoy } from "wagmi/chains";
 import { User } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -20,6 +20,7 @@ export function EnsProfile({
     avatarClassName,
     nameClassName,
 }: EnsProfileProps) {
+    const { chainId } = useAccount();
     const { data: ensName } = useEnsName({
         address: address as `0x${string}`,
         chainId: mainnet.id,
@@ -33,7 +34,10 @@ export function EnsProfile({
         },
     });
 
-    const shortAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
+    // Mock ENS name for Amoy network
+    const displayEnsName = chainId === polygonAmoy.id ? "synapse.eth" : (ensName || `${address.slice(0, 6)}...${address.slice(-4)}`);
+    // Use mocked avatar or real one
+    const displayAvatar = chainId === polygonAmoy.id ? null : ensAvatar;
 
     return (
         <div className={cn("flex items-center gap-2", className)}>
@@ -44,10 +48,10 @@ export function EnsProfile({
                         avatarClassName,
                     )}
                 >
-                    {ensAvatar ? (
+                    {displayAvatar ? (
                         <img
-                            src={ensAvatar}
-                            alt={ensName || address}
+                            src={displayAvatar}
+                            alt={displayEnsName}
                             className="w-full h-full object-cover"
                         />
                     ) : (
@@ -57,7 +61,7 @@ export function EnsProfile({
             )}
             {showName && (
                 <span className={cn("font-medium truncate", nameClassName)}>
-                    {ensName || shortAddress}
+                    {displayEnsName}
                 </span>
             )}
         </div>
